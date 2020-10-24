@@ -13,8 +13,8 @@ class Model {
 
         switch($method){
             case "get":
-                break;
                 return $this->values[$fieldName];
+                break;
             case "set":
                 $this->values[$fieldName] = $args[0];
                 break;
