@@ -9,6 +9,7 @@ class User extends Model {
 
     const SESSION = "User";
     const SECRET = "";
+    const SECRET_IV = "";
     const ERROR = "UserError";
     const ERROR_REGISTER = "UserErrorRegister";
 
@@ -156,7 +157,7 @@ class User extends Model {
         ));
     }
 
-    public function getForgot($email) {
+    public function getForgot($email, $inadmin = true) {
         
         $sql = new Sql();
 
@@ -183,12 +184,17 @@ class User extends Model {
             if (count($results2) === 0) {
                 throw new \Exception("Desculpe, não foi possível recuperar a senha.");
             } else {
-                
-                $dataRecovery = $results2[0];
 
-                $code = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_128, User::SECRET, $dataRecovery["idrecovery"], MCRYPT_MODE_ECB));
+                $dataRecovery = $results2[0];
+                $code = openssl_encrypt($dataRecovery['idrecovery'], 'AES-128-CBC', pack("a16", User::SECRET), 0, pack("a16", User::SECRET_IV));
+
+				$code = base64_encode($code);
                 
-                $link = "http://127.0.0.1/ecommerce/admin/forgot/reset?code=$code";
+                if($inadmin === true){
+                    $link = "http://127.0.0.1/ecommerce/admin/forgot/reset?code=$code";
+                } else {
+                    $link = "http://127.0.0.1/ecommerce/forgot/reset?code=$code";
+                }
                 
                 $mailer = new Mailer($data["desemail"], $data["desperson"], "Redefinir Senha da Hcode Store", "forgot", array(
                     "name"=>$data["desperson"],
@@ -204,7 +210,9 @@ class User extends Model {
 
     public static function validForgotDecrypt($code) {
         
-        $idrecovery = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, User::SECRET, base64_decode($code), MCRYPT_MODE_ECB);
+        // $idrecovery = openssl_encrypt(MCRYPT_RIJNDAEL_128, User::SECRET, base64_decode($code), MCRYPT_MODE_ECB);
+        $code = base64_decode($code);
+        $idrecovery = openssl_decrypt($code, 'AES-128-CBC', pack("a16", User::SECRET), 0, pack("a16", User::SECRET_IV));
 
         $sql = new Sql();
 
